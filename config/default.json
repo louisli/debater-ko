@@ -1,0 +1,87 @@
+{
+  "config_version": 1,
+  "name": "default",
+
+  "timezone": "America/New_York",
+
+  "participants": [
+    { "id": "bot-a" },
+    { "id": "bot-b" },
+    { "id": "bot-c" }
+  ],
+
+  "owner": {
+    "login": null
+  },
+
+  "schedule": {
+    "run_days": ["Tue", "Thu", "Sat", "Sun"],
+    "cycle_hours": ["06", "08", "10", "12"],
+    "windows": {
+      "work":   { "start": 0,  "end": 25 },
+      "sheets": { "at": 25 },
+      "review": { "start": 30, "end": 45 },
+      "tally":  { "at": 47 }
+    },
+    "participant_wake_minutes": [0, 15, 30],
+    "review_wait_until_minute": 40,
+    "orchestrator_minutes": [25, 47],
+    "nightly": { "at": "22:30", "prepares_first_cycle": true },
+    "quiet_hours": { "from": "22:00", "to": "02:59" }
+  },
+
+  "cycle": {
+    "new_items_per_cycle": "one_per_participant",
+    "first_author_rotates": true,
+    "reviewers": "all_but_author"
+  },
+
+  "proposal": {
+    "min_leaves": 3,
+    "max_leaves": null,
+    "requires_concept": true
+  },
+
+  "votes": {
+    "options": ["yes", "maybe", "no"],
+    "changes_required_for": ["maybe"],
+    "author_counts_as": "yes",
+    "missing_vote_counts_as": "mixed"
+  },
+
+  "tally": [
+    { "when": "all_reviewers_vote", "vote": "yes", "then": "approved" },
+    { "when": "all_reviewers_vote", "vote": "no",  "then": "rejected" },
+    { "otherwise": "more-review" }
+  ],
+
+  "limits": {
+    "reworks_per_task": 2,
+    "errors_per_role_per_item": 3,
+    "lock_timeout_minutes": 30,
+    "heartbeat_minutes": 10
+  },
+
+  "atomic_test": [
+    "One sentence: it can be stated in one sentence with no \"and\".",
+    "One owner, one outcome: one agent or person can finish it, with one checkable result.",
+    "Testable: done_when is a pass/fail check.",
+    "No open decisions: every choice inside it is made; choices that need the owner become a \"Question for the owner\" leaf.",
+    "Stable: breaking it down again would return the same task."
+  ],
+
+  "owner_commands": ["approve", "reword", "rework", "reject", "rerun", "park", "resume"],
+
+  "audit": {
+    "enabled": false,
+    "max_tasks_per_run": 30
+  },
+
+  "export": {
+    "folder": "outbox/"
+  },
+
+  "trust": {
+    "verify_authors": false
+  }
+}
