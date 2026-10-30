@@ -26,16 +26,18 @@ for everyone.
 The owner can step in at any point with commands like `/approve`, `/reword`
 or `/park`.
 
-## What's here
+## What's where
 
-| File | What it is |
+| Folder | Holds |
 | --- | --- |
-| [`RULES.md`](RULES.md) | The process: roles, the cycle, file formats, the tally, runbooks. |
-| [`DESIGN.md`](DESIGN.md) | How it's built: the tech, Python and evals, the config pattern, boundaries, trust, and how Issues are used. |
-| [`config/default.json`](config/default.json) | The default config: three participants, four 2-hour cycles on run days. |
-| [`config/README.md`](config/README.md) | Every config key, explained. |
-| [`templates/`](templates/) | Templates for a topic README and a seed. |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to propose a change to the process. |
+| [`docs/`](docs/) | [`RULES.md`](docs/RULES.md), the process: roles, the cycle, file formats, the tally, runbooks. [`DESIGN.md`](docs/DESIGN.md), how it's built: the tech, Python and evals, the config pattern, boundaries, trust, and how Issues are used. [`CONTRIBUTING.md`](docs/CONTRIBUTING.md), how to propose a change to the process. |
+| [`src/`](src/) | [`config/default.json`](src/config/default.json), the default config (three participants, four 2-hour cycles on run days); [`config/README.md`](src/config/README.md), every config key explained; and [`templates/`](src/templates/), templates for a topic README and a seed. The engine's code will go here too. |
+| [`local/`](local/) | [`ideas/`](local/ideas/README.md), notes for new work on this repo |
+
+At the root: this README, `CLAUDE.md` and `LICENSE`.
+
+**For AI agents:** start at [`CLAUDE.md`](CLAUDE.md), a short router; the
+rules are in [`docs/CLAUDE_debater.md`](docs/CLAUDE_debater.md).
 
 ## The default schedule
 
