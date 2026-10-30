@@ -13,7 +13,7 @@ a pull request like any rule.
 | **Engine** | Python 3.12, one package, `debater` | Readable by anyone, runs anywhere, good for both the orchestrator and the evals. |
 | **Runtime dependencies** | `PyYAML` (frontmatter) and `jsonschema` (config) only | Everything else is the standard library. A small dependency list keeps it easy to audit (section 5). |
 | **GitHub API** | REST only, through `urllib` from the standard library | Many AI sandboxes block GraphQL. No GitHub SDK. |
-| **Config** | JSON, validated by `config/schema.json` | Readable by every language and tool, and it has no code. Section 3. |
+| **Config** | JSON, validated by `src/config/schema.json` | Readable by every language and tool, and it has no code. Section 3. |
 | **Participant files** | Markdown with YAML frontmatter | Easy for a model to write, and easy for a person to read in a diff. |
 | **Tests and lint** | `pytest`, `ruff` | The usual choices. |
 | **Scheduler** | GitHub Actions `schedule:` with `timezone:` for the orchestrator | Participants bring their own schedulers (section 4). |
@@ -31,7 +31,7 @@ writes files. It never calls a model, and it never decides whether an idea is
 good: that's the participants' job.
 
 ```
-debater/
+src/debater/
   config.py      load default + override, validate against the schema
   clock.py       cycles and windows from schedule.*
   formats.py     parse and write every file format in RULES.md section 7
@@ -69,7 +69,7 @@ nothing.
 | **Quality** | Does each leaf pass the atomic test? Is the concept covered by its leaves? | Yes: an optional judge, run outside the engine |
 
 - **Level 1–3 evals** run in CI on every change to this repo, against
-  recorded debates in `tests/fixtures/`, and on demand against a live debate
+  recorded debates in `src/tests/fixtures/`, and on demand against a live debate
   (`debater eval --repo <owner>/<name>`).
 - **The quality eval** is a separate script that sends files to a model of
   the user's choice and records its scores next to the report. Its scores are
@@ -81,21 +81,21 @@ nothing.
 ## 3. Config-driven
 
 1. **Every value that could differ between debates is a config key,** with a
-   default in `config/default.json` and a row in `config/README.md`. A
+   default in `src/config/default.json` and a row in `src/config/README.md`. A
    number, name, time or label in the engine's code that isn't a key is a
    bug.
-2. **Two layers, no more:** `config/default.json` from this repo, then the
+2. **Two layers, no more:** `src/config/default.json` from this repo, then the
    debate's `debater.config.json`. Objects merge key by key; lists and plain
    values replace. No environment variables, except for secrets (below).
 3. **Validated before anything runs.** The merged config must pass
-   `config/schema.json`. Unknown keys are errors, not ignored, so a typo
+   `src/config/schema.json`. Unknown keys are errors, not ignored, so a typo
    can't silently fall back to a default. Cross-key rules (the window order,
    at least 2 participants) are checked too. An invalid config stops the run
    and is reported on the status Issue.
 4. **Read through one object.** Code gets values from the loaded `Config`,
    never by reading the file again or by key strings spread around.
 5. **Versioned.** `config_version` names the format. A change that renames or
-   removes a key bumps it and ships a migration note in `config/README.md`.
+   removes a key bumps it and ships a migration note in `src/config/README.md`.
 6. **Visible.** Each orchestrator run logs a hash of the merged config, so a
    result can be traced back to the config that made it.
 7. **Secrets are never config.** A participant's token, a model API key or a

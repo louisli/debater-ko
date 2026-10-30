@@ -3,8 +3,8 @@
 These are the rules every participant follows in a debater-ko debate. Anything
 that changes from one debate to the next (who takes part, the schedule, the
 limits, the tally) is a config key, written here as `key.path` and explained
-in [`config/README.md`](config/README.md). Numbers in brackets are the
-defaults from [`config/default.json`](config/default.json).
+in [`src/config/README.md`](../src/config/README.md). Numbers in brackets are the
+defaults from [`src/config/default.json`](../src/config/default.json).
 
 **If something isn't defined here or in the config, don't do it.** Ask the
 owner.
@@ -163,7 +163,7 @@ explicitly. An AI never promotes on its own initiative.
     - [ ] Personal details are removed (rule 0.8).
 3. **Draft** the topic README (goal, Target line, background, Already decided,
    out of scope, a seed table with `depends_on`) and the seeds, from
-   [`templates/seed.md`](templates/seed.md). Each seed gets a `priority`
+   [`src/templates/seed.md`](../src/templates/seed.md). Each seed gets a `priority`
    (1 = first; the owner sets the order) and `depends_on`. `NNN` = the
    highest number in `topics/*/` + 1.
 4. **The owner edits the draft** until they say **go**.
@@ -711,7 +711,7 @@ gh api "repos/<repo>/issues?state=open&labels=kind:task,state:blocked&per_page=1
 
 ## 15. Changing the rules
 
-These rules and `config/default.json` change only through pull requests to
+These rules and `src/config/default.json` change only through pull requests to
 this repo; see [`CONTRIBUTING.md`](CONTRIBUTING.md). A debate picks up a change
 when it updates to the new version. A debate's own choices go in its
 `debater.config.json`, never in these rules.

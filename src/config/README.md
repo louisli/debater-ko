@@ -1,14 +1,14 @@
 # Configuration
 
 Everything that differs from one debate to the next lives in config, not in
-[`RULES.md`](../RULES.md). The rules refer to config keys by their path, for
+[`RULES.md`](../../docs/RULES.md). The rules refer to config keys by their path, for
 example `schedule.windows.work.end`.
 
 ## Files
 
 | File | What it is |
 | --- | --- |
-| `config/default.json` | The shipped default. Generic names, no accounts, no secrets. |
+| `src/config/default.json` | The shipped default. Generic names, no accounts, no secrets. |
 | `debater.config.json` | Your override, in the repo that runs a debate. Only the keys you change. |
 
 **How they combine:** start from `default.json`, then apply the override.
@@ -45,7 +45,7 @@ number from 2 up; with 2, each task gets one reviewer.
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `owner.login` | `null` | The GitHub login whose commands the orchestrator executes (RULES.md section 9). `null` means no owner commands are accepted. |
+| `owner.login` | `null` | The GitHub login whose commands the orchestrator executes (docs/RULES.md section 9). `null` means no owner commands are accepted. |
 
 ### `schedule`
 
@@ -115,12 +115,12 @@ state. The default:
 
 ### `atomic_test`
 
-The checks every leaf must pass (RULES.md section 8). A list of sentences, so
+The checks every leaf must pass (docs/RULES.md section 8). A list of sentences, so
 a debate can make the bar stricter or looser.
 
 ### `owner_commands`
 
-Which owner commands are enabled (RULES.md section 9.2). Remove one to turn it
+Which owner commands are enabled (docs/RULES.md section 9.2). Remove one to turn it
 off.
 
 ### `audit` and `export`
@@ -135,4 +135,4 @@ off.
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `trust.verify_authors` | `false` | Also check that each participant file was committed by that participant's `login` (DESIGN.md 5.4). Turn on only when every participant has its own login. |
+| `trust.verify_authors` | `false` | Also check that each participant file was committed by that participant's `login` (docs/DESIGN.md 5.4). Turn on only when every participant has its own login. |
