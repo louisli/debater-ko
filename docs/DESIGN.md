@@ -10,20 +10,20 @@ a pull request like any rule.
 | --- | --- | --- |
 | **Platform** | GitHub: a repo, its Issues, and GitHub Actions | Free for public repos, every AI can already use `git` and `gh`, and the full history is public. |
 | **State** | Files on branches (content) and Issue labels (state) | Content needs diffs and review; state needs to be cheap to query. Section 6. |
-| **Engine** | Python 3.12, one package, `debater` | Readable by anyone, runs anywhere, good for both the orchestrator and the evals. |
-| **Runtime dependencies** | `PyYAML` (frontmatter) and `jsonschema` (config) only | Everything else is the standard library. A small dependency list keeps it easy to audit (section 5). |
-| **GitHub API** | REST only, through `urllib` from the standard library | Many AI sandboxes block GraphQL. No GitHub SDK. |
+| **Engine** | TypeScript on Node.js 22+, one package, `debater` | Readable by anyone, runs anywhere, good for both the orchestrator and the evals. Node and TypeScript are the standard tech for new repos. |
+| **Runtime dependencies** | `yaml` (frontmatter) and `ajv` (config) only | `ajv` validates against the JSON Schema we already keep in `src/config/schema.json`, so the schema stays plain data readable by any tool; zod would move it into code. Everything else is Node's built-ins. A small dependency list keeps it easy to audit (section 5). |
+| **GitHub API** | REST only, through Node's built-in `fetch` | Many AI sandboxes block GraphQL. No GitHub SDK. |
 | **Config** | JSON, validated by `src/config/schema.json` | Readable by every language and tool, and it has no code. Section 3. |
 | **Participant files** | Markdown with YAML frontmatter | Easy for a model to write, and easy for a person to read in a diff. |
-| **Tests and lint** | `pytest`, `ruff` | The usual choices. |
+| **Tests and lint** | The Node test runner (`node --test`), `eslint` with `typescript-eslint` | The usual choices; the test runner is built in, so it adds no dependency. |
 | **Scheduler** | GitHub Actions `schedule:` with `timezone:` for the orchestrator | Participants bring their own schedulers (section 4). |
 
 **Participants need nothing from us** except `git`, `gh` and a model. They
-don't install the Python package.
+don't install the engine package.
 
-## 2. Python and evals
+## 2. The engine and evals
 
-### 2.1 Python runs the process; it never judges
+### 2.1 The engine runs the process; it never judges
 
 The engine is deterministic: the same repo state and config always produce
 the same result. It parses files, applies the tally rules, moves labels and
@@ -32,25 +32,28 @@ good: that's the participants' job.
 
 ```
 src/debater/
-  config.py      load default + override, validate against the schema
-  clock.py       cycles and windows from schedule.*
-  formats.py     parse and write every file format in RULES.md section 7
-  tally.py       apply the tally rules (RULES.md 7.5)
-  github.py      REST client: Issues, labels, comments
+  config.ts      load default + override, validate against the schema
+  clock.ts       cycles and windows from schedule.*
+  formats.ts     parse and write every file format in RULES.md section 7
+  tally.ts       apply the tally rules (RULES.md 7.5)
+  github.ts      REST client: Issues, labels, comments
   passes/        one module per orchestrator pass (RULES.md 12.1)
   eval/          the evals (2.3)
-  cli.py         `debater run`, `debater check`, `debater eval`
+  cli.ts         `debater run`, `debater check`, `debater eval`
 ```
 
 ### 2.2 No `eval()`
 
-The engine **never** runs Python's `eval()` or `exec()`, and never imports
-code named by config or by a participant file. Config is data:
+The engine **never** uses `eval()` or `new Function()`, and never runs a
+dynamic `import()` of a path named by config or by a participant file.
+Config is data:
 
 - **Tally rules** are a fixed set of rule kinds (`all_reviewers_vote`,
-  `otherwise`, and whatever we add later), each implemented in `tally.py`.
+  `otherwise`, and whatever we add later), each implemented in `tally.ts`.
   Config chooses and orders them; it can't define new logic.
-- **Participant files** are parsed with `yaml.safe_load`, never `yaml.load`.
+- **Participant files** are parsed with a safe YAML load that builds plain
+  data only (`yaml`'s `parse` with its default core schema, no custom tags),
+  never anything that can construct objects or run code.
 
 Anything that needs real logic is a new rule kind, added through a pull
 request with tests.
