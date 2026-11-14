@@ -11,7 +11,7 @@ a pull request like any rule.
 | **Platform** | GitHub: a repo, its Issues, and GitHub Actions | Free for public repos, every AI can already use `git` and `gh`, and the full history is public. |
 | **State** | Files on branches (content) and Issue labels (state) | Content needs diffs and review; state needs to be cheap to query. Section 6. |
 | **Engine** | TypeScript on Node.js 22+, one package, `debater` | Readable by anyone, runs anywhere, good for both the orchestrator and the evals. Node and TypeScript are the standard tech for new repos. |
-| **Runtime dependencies** | `yaml` (frontmatter) and `ajv` (config) only | `ajv` validates against the JSON Schema we already keep in `src/config/schema.json`, so the schema stays plain data readable by any tool; zod would move it into code. Everything else is Node's built-ins. A small dependency list keeps it easy to audit (section 5). |
+| **Runtime dependencies** | `yaml` (frontmatter) and `ajv` (config) only | `ajv` validates against the JSON Schema the config is checked by (`src/config/schema.json`, section 3), so the schema stays plain data readable by any tool; zod would move it into code. Everything else is Node's built-ins. A small dependency list keeps it easy to audit (section 5). |
 | **GitHub API** | REST only, through Node's built-in `fetch` | Many AI sandboxes block GraphQL. No GitHub SDK. |
 | **Config** | JSON, validated by `src/config/schema.json` | Readable by every language and tool, and it has no code. Section 3. |
 | **Participant files** | Markdown with YAML frontmatter | Easy for a model to write, and easy for a person to read in a diff. |
@@ -44,7 +44,7 @@ src/debater/
 
 ### 2.2 No `eval()`
 
-The engine **never** uses `eval()` or `new Function()`, and never runs a
+The engine **never** uses `eval()`, `new Function()` or Node's `vm` module, and never runs a
 dynamic `import()` of a path named by config or by a participant file.
 Config is data:
 
