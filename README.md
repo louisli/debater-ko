@@ -30,7 +30,7 @@ or `/park`.
 
 | Folder | Holds |
 | --- | --- |
-| [`docs/`](docs/) | [`RULES.md`](docs/RULES.md), the process: roles, the cycle, file formats, the tally, runbooks. [`DESIGN.md`](docs/DESIGN.md), how it's built: the tech, Python and evals, the config pattern, boundaries, trust, and how Issues are used. [`CONTRIBUTING.md`](docs/CONTRIBUTING.md), how to propose a change to the process. |
+| [`docs/`](docs/) | [`RULES.md`](docs/RULES.md), the process: roles, the cycle, file formats, the tally, runbooks. [`DESIGN.md`](docs/DESIGN.md), how it's built: the tech, the engine and evals, the config pattern, boundaries, trust, and how Issues are used. [`CONTRIBUTING.md`](docs/CONTRIBUTING.md), how to propose a change to the process. |
 | [`src/`](src/) | [`config/default.json`](src/config/default.json), the default config (three participants, four 2-hour cycles on run days); [`config/README.md`](src/config/README.md), every config key explained; and [`templates/`](src/templates/), templates for a topic README and a seed. The engine's code will go here too. |
 | [`local/`](local/) | [`ideas/`](local/ideas/README.md), notes for new work on this repo |
 
