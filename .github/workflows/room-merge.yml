@@ -1,0 +1,102 @@
+name: room-merge
+# A control room's own PR merges itself (Lou, 2026-11-19; V-1119-49, earth-616-hq/core-product#1351, decision file
+# earth-616-hq/toc-logs#16): the room adds the label `room:merge`, and this merges the PR once the principal
+# reviewer's PASS is on its head and CI is green. ROOM PRs ONLY: Alpha and Bravo keep Master Chief and the gates.
+#
+# It merges only when every one of these holds; otherwise it does nothing and the run log says why:
+#   1. the PR is open, not a draft, from a branch in this repo, and carries `room:merge`;
+#   2. its body has a `Room: <x>` line (x is a…d), which makes it a room's PR (src/ledger/rooms.ts roomOf);
+#   3. it is not an Alpha or Bravo PR: no `Team:` line, no Bravo label (claimed:/reviewing:/held:bravo, bravo-shift),
+#      and no claude/bravo- or bravo/ branch;
+#   4. its merge level isn't Lou's (no `merge:hq` or `merge:lou` label), and it touches no box script
+#      (team/addons/discussion/box/: SWAT Command merges those and posts the install paste);
+#   5. the principal reviewer's latest verdict is PASS, without `security`, and on the head commit;
+#   6. CI on the head is green: at least one check run, every check run done as success, neutral or skipped (this
+#      workflow's own and would-auto-merge aside), and no failing or pending commit status.
+# It never checks out the PR's code: everything is read through the API, so pull_request_target stays safe.
+# Its token is a personal one, not GITHUB_TOKEN: a merge by GITHUB_TOKEN starts no workflow, and main's CI must run.
+#
+# One file, the same in every repo it covers: earth-616-hq/core-jarvis (this copy is the source), core-product,
+# toc-logs, toc-switch-runner, and projectll/j-benchmark-testing-ai-models, debater-ko and danger-room. Copy it
+# unchanged; core-jarvis tests/roomMerge.test.ts tests the script below.
+on:
+  pull_request_target:
+    types: [labeled, synchronize, ready_for_review]
+  schedule:
+    - cron: "7,22,37,52 * * * *"   # a verdict or CI that lands after the label: one sweep of the labelled PRs every 15 minutes
+  # No pull_request_review trigger: it would run the PR's own copy of this file, with the token, so a PR could change
+  # the rules it is merged by. pull_request_target and schedule run main's copy.
+  workflow_dispatch:
+
+concurrency:
+  group: room-merge-${{ github.event.pull_request.number || 'sweep' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  merge:
+    if: github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'room:merge'
+    runs-on: [self-hosted, fly]   # the earth-616-hq org runner, earth-616-hq/toc-switch-runner
+    timeout-minutes: 10
+    steps:
+      - name: Merge the room PR if every rule holds
+        env:
+          GH_TOKEN: ${{ secrets.ROOM_MERGE_TOKEN || secrets.LEDGER_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          SELF="room-merge"
+          [ -n "${GH_TOKEN:-}" ] || { echo "no ROOM_MERGE_TOKEN or LEDGER_TOKEN secret in $REPO: nothing merged"; exit 0; }
+          one() {
+            local pr=$1 meta head body labels branch draft state same
+            meta=$(gh api "repos/$REPO/pulls/$pr" --jq '[.state, (.draft|tostring), .head.sha, .head.ref, (.head.repo.full_name == .base.repo.full_name | tostring), ([.labels[].name] | join(","))] | join("\t")') || { echo "#$pr: unreadable"; return; }
+            IFS=$'\t' read -r state draft head branch same labels <<< "$meta"
+            body=$(gh api "repos/$REPO/pulls/$pr" --jq '.body // ""')
+            local why=""
+            [ "$state" = open ] || why="not open"
+            [ -z "$why" ] && [ "$draft" = false ] || why=${why:-"a draft"}
+            [ -z "$why" ] && [ "$same" = true ] || why=${why:-"from a fork"}
+            [ -z "$why" ] && [[ ",$labels," == *",room:merge,"* ]] || why=${why:-"no room:merge label"}
+            [ -z "$why" ] && grep -qiE '^[[:space:]]*Room:[[:space:]]*[a-d][[:space:]]*$' <<< "$body" || why=${why:-"no Room: line, so not a room PR"}
+            [ -z "$why" ] && ! grep -qiE '^[[:space:]]*Team:' <<< "$body" || why=${why:-"a Team: line: an Alpha or Bravo PR, merged through Master Chief and the gates"}
+            [ -z "$why" ] && ! [[ ",$labels," =~ ,(claimed:bravo|reviewing:bravo|held:bravo|bravo-shift), ]] || why=${why:-"a Bravo label: merged through Master Chief and the gates"}
+            [ -z "$why" ] && ! [[ "$branch" =~ ^(claude/bravo-|bravo/) ]] || why=${why:-"a Bravo branch: merged through Master Chief and the gates"}
+            [ -z "$why" ] && ! [[ ",$labels," =~ ,(merge:hq|merge:lou), ]] || why=${why:-"merge level hq or lou: Lou merges it"}
+            if [ -z "$why" ] && gh api "repos/$REPO/pulls/$pr/files?per_page=100" --paginate --jq '.[].filename' | grep -q '^team/addons/discussion/box/'; then
+              why="a box script: SWAT Command merges it and posts the install paste"
+            fi
+            if [ -z "$why" ]; then
+              local v
+              v=$(gh api "repos/$REPO/pulls/$pr/reviews?per_page=100" --paginate --jq '[.[] | select(.body | startswith("[principal-reviewer]: Reviewer verdict: "))] | last | if . == null then "none" else "\(.commit_id)\t\(.body | split("\n")[0])" end')
+              if [ "$v" = none ] || [ -z "$v" ]; then why="no principal-reviewer verdict"
+              elif [ "${v%%$'\t'*}" != "$head" ]; then why="the principal reviewer's latest verdict isn't on the head"
+              elif ! grep -qE '^\[principal-reviewer\]: Reviewer verdict: PASS\b' <<< "${v#*$'\t'}"; then why="the principal reviewer's verdict isn't PASS"
+              elif grep -qi 'security' <<< "${v#*$'\t'}"; then why="a security PASS: Lou merges it"
+              fi
+            fi
+            if [ -z "$why" ]; then
+              local runs st
+              runs=$(gh api "repos/$REPO/commits/$head/check-runs?per_page=100" --paginate --jq ".check_runs[] | select(.name != \"$SELF\" and .name != \"would-auto-merge\") | \"\(.status) \(.conclusion // \"-\") \(.name)\"")
+              st=$(gh api "repos/$REPO/commits/$head/status" --jq '.statuses | map(.state) | join(",")')
+              if [ -z "$runs" ]; then why="no CI on the head yet"
+              elif grep -qvE '^completed (success|neutral|skipped) ' <<< "$runs"; then why="CI not green: $(grep -vE '^completed (success|neutral|skipped) ' <<< "$runs" | head -3 | tr '\n' ';')"
+              elif [[ ",$st," =~ ,(failure|error|pending), ]]; then why="a commit status is failing or pending"
+              fi
+            fi
+            if [ -n "$why" ]; then echo "#$pr: not merged: $why"; return; fi
+            if gh api -X PUT "repos/$REPO/pulls/$pr/merge" -f merge_method=merge -f sha="$head" --silent; then
+              echo "#$pr: merged at ${head:0:7}"
+              gh api "repos/$REPO/issues/$pr/comments" -f body="Merged by: room-merge · $(TZ=America/New_York date '+%Y-%m-%d %H:%M') ET · room PR, principal-reviewer PASS on ${head:0:7}, CI green (V-1119-49)" --silent || true
+            else
+              echo "#$pr: merge refused by GitHub (conflict, or the head moved)"
+            fi
+          }
+          if [ -n "${PR:-}" ]; then
+            one "$PR"
+          else
+            for pr in $(gh api "repos/$REPO/issues?state=open&labels=room:merge&per_page=100" --paginate --jq '.[] | select(.pull_request) | .number'); do one "$pr"; done
+          fi
