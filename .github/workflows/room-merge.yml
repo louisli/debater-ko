@@ -39,7 +39,7 @@ permissions:
 jobs:
   merge:
     if: github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'room:merge'
-    runs-on: [self-hosted, fly]   # the earth-616-hq org runner, earth-616-hq/toc-switch-runner
+    runs-on: [self-hosted, gate]   # the earth-616-hq org runner's gate lane, earth-616-hq/toc-switch-runner: merge jobs start first, on a reserved machine (V-1119-84)
     timeout-minutes: 10
     steps:
       - name: Merge the room PR if every rule holds
