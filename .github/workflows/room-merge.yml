@@ -11,7 +11,8 @@ name: room-merge
 #   4. its merge level isn't Lou's (no `merge:hq` or `merge:lou` label), and it touches no box script
 #      (team/addons/discussion/box/: SWAT Command merges those and posts the install paste);
 #   5. the principal reviewer's latest verdict is PASS, without `security`, and on the head commit, and it carries its
-#      two required lines, `Code: PASS|not needed …` and `Infra: ok|no infra changes …` (V-1119-92);
+#      two required lines, `Code: PASS|not needed …` and `Infra: ok|no infra changes …` (V-1119-92; one without the
+#      other doesn't count, and a verdict with neither predates the rule and counts as before);
 #   6. CI on the head is green: at least one check run, every check run done as success, neutral or skipped (this
 #      workflow's own and would-auto-merge aside), and no failing or pending commit status.
 # It never checks out the PR's code: everything is read through the API, so pull_request_target stays safe.
@@ -77,7 +78,7 @@ jobs:
               elif [ "${v%%$'\t'*}" != "$head" ]; then why="the principal reviewer's latest verdict isn't on the head"
               elif ! grep -qE '^\[principal-reviewer\]: Reviewer verdict: PASS\b' <<< "${v#*$'\t'}"; then why="the principal reviewer's verdict isn't PASS"
               elif grep -qi 'security' <<< "${v#*$'\t'}"; then why="a security PASS: Lou merges it"
-              elif [ "$(gh api "repos/$REPO/pulls/$pr/reviews?per_page=100" --paginate --jq '[.[] | select(.body | startswith("[principal-reviewer]: Reviewer verdict: "))] | last | .body | test("(^|\n)[ \t]*(?:[-*]\\s+)?\\**\\s*Code\\s*:\\s*\\**\\s*(PASS|not needed)"; "i") and test("(^|\n)[ \t]*(?:[-*]\\s+)?\\**\\s*Infra\\s*:\\s*\\**\\s*(ok|no infra changes)"; "i")')" != true ]; then why="the principal reviewer's verdict lacks a clear Code: or Infra: line (V-1119-92)"
+              elif [ "$(gh api "repos/$REPO/pulls/$pr/reviews?per_page=100" --paginate --jq '[.[] | select(.body | startswith("[principal-reviewer]: Reviewer verdict: "))] | last | .body | ((test("(^|\n)[ \t]*(?:[-*]\\s+)?\\**\\s*Code\\s*:\\s*\\**\\s*(PASS|not needed)"; "i") and test("(^|\n)[ \t]*(?:[-*]\\s+)?\\**\\s*Infra\\s*:\\s*\\**\\s*(ok|no infra changes)"; "i")) or ((test("(^|\n)[ \t]*(?:[-*]\\s+)?\\**\\s*Code\\s*:"; "i") | not) and (test("(^|\n)[ \t]*(?:[-*]\\s+)?\\**\\s*Infra\\s*:"; "i") | not)))')" != true ]; then why="the principal reviewer's verdict has an unclear or missing Code: or Infra: line (V-1119-92)"
               fi
             fi
             if [ -z "$why" ]; then
