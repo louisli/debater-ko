@@ -5,7 +5,7 @@ name: room-merge
 #
 # It merges only when every one of these holds; otherwise it does nothing and the run log says why:
 #   1. the PR is open, not a draft, from a branch in this repo, and carries `room:merge`;
-#   2. its body has a `Room: <x>` line (x is a…d), which makes it a room's PR (src/ledger/rooms.ts roomOf);
+#   2. its body has a `Room: <x>` line (x is a…g, team/config/rooms.json), which makes it a room's PR (src/ledger/rooms.ts roomOf);
 #   3. it is not an Alpha or Bravo PR: no `Team:` line, no Bravo label (claimed:/reviewing:/held:bravo, bravo-shift),
 #      and no claude/bravo- or bravo/ branch;
 #   4. its merge level isn't Lou's (no `merge:hq` or `merge:lou` label), and it touches no box script
@@ -51,6 +51,18 @@ jobs:
           set -uo pipefail
           SELF="room-merge"
           [ -n "${GH_TOKEN:-}" ] || { echo "no ROOM_MERGE_TOKEN or LEDGER_TOKEN secret in $REPO: nothing merged"; exit 0; }
+          # which [principal-reviewer] verdicts count (V-1120-01, -16): only one from a `verdictAuthors` login (louisli), from
+          # earth-616-hq/core-jarvis team/config/claude-runner.json on main. Romeo's verdicts (posted as github-actions[bot]
+          # by claude-task.yml) are advisory and never count toward a merge, Run-ID line or not; nor does any other author's.
+          # Unreadable config: louisli only. The same rule as the TS gates (src/runner/github.ts trustedReviews).
+          RCFG=$(gh api "repos/earth-616-hq/core-jarvis/contents/team/config/claude-runner.json?ref=main" --jq '.content' 2>/dev/null | base64 -d 2>/dev/null)
+          AUTHORS=$(jq -c '.verdictAuthors | arrays' <<< "$RCFG" 2>/dev/null)
+          [ -n "$AUTHORS" ] || AUTHORS='["louisli"]'
+          verdict() {  # PR $1's latest trusted principal verdict: "<commit>\t<line 1>", or none
+            gh api "repos/$REPO/pulls/$1/reviews?per_page=100" --paginate | jq -s -r --argjson who "$AUTHORS" '[.[][] | select((.body // "") | startswith("[principal-reviewer]: Reviewer verdict: "))
+              | select((.user.login // "") as $u | $who | index([$u]) != null)]
+              | last | if . == null then "none" else "\(.commit_id)\t\(.body | split("\n")[0])" end'
+          }
           one() {
             local pr=$1 meta head body labels branch draft state same
             meta=$(gh api "repos/$REPO/pulls/$pr" --jq '[.state, (.draft|tostring), .head.sha, .head.ref, (.head.repo.full_name == .base.repo.full_name | tostring), ([.labels[].name] | join(","))] | join("\t")') || { echo "#$pr: unreadable"; return; }
@@ -61,7 +73,7 @@ jobs:
             [ -z "$why" ] && [ "$draft" = false ] || why=${why:-"a draft"}
             [ -z "$why" ] && [ "$same" = true ] || why=${why:-"from a fork"}
             [ -z "$why" ] && [[ ",$labels," == *",room:merge,"* ]] || why=${why:-"no room:merge label"}
-            [ -z "$why" ] && grep -qiE '^[[:space:]]*Room:[[:space:]]*[a-d][[:space:]]*$' <<< "$body" || why=${why:-"no Room: line, so not a room PR"}
+            [ -z "$why" ] && grep -qiE '^[[:space:]]*Room:[[:space:]]*[a-g][[:space:]]*$' <<< "$body" || why=${why:-"no Room: line, so not a room PR"}
             [ -z "$why" ] && ! grep -qiE '^[[:space:]]*Team:' <<< "$body" || why=${why:-"a Team: line: an Alpha or Bravo PR, merged through Master Chief and the gates"}
             [ -z "$why" ] && ! [[ ",$labels," =~ ,(claimed:bravo|reviewing:bravo|held:bravo|bravo-shift), ]] || why=${why:-"a Bravo label: merged through Master Chief and the gates"}
             [ -z "$why" ] && ! [[ "$branch" =~ ^(claude/bravo-|bravo/) ]] || why=${why:-"a Bravo branch: merged through Master Chief and the gates"}
@@ -71,7 +83,7 @@ jobs:
             fi
             if [ -z "$why" ]; then
               local v
-              v=$(gh api "repos/$REPO/pulls/$pr/reviews?per_page=100" --paginate --jq '[.[] | select(.body | startswith("[principal-reviewer]: Reviewer verdict: "))] | last | if . == null then "none" else "\(.commit_id)\t\(.body | split("\n")[0])" end')
+              v=$(verdict "$pr")
               if [ "$v" = none ] || [ -z "$v" ]; then why="no principal-reviewer verdict"
               elif [ "${v%%$'\t'*}" != "$head" ]; then why="the principal reviewer's latest verdict isn't on the head"
               elif ! grep -qE '^\[principal-reviewer\]: Reviewer verdict: PASS\b' <<< "${v#*$'\t'}"; then why="the principal reviewer's verdict isn't PASS"
@@ -80,7 +92,7 @@ jobs:
             fi
             if [ -z "$why" ]; then
               local runs st
-              runs=$(gh api "repos/$REPO/commits/$head/check-runs?per_page=100" --paginate --jq ".check_runs[] | select(.name != \"$SELF\" and .name != \"would-auto-merge\") | \"\(.status) \(.conclusion // \"-\") \(.name)\"")
+              runs=$(gh api "repos/$REPO/commits/$head/check-runs?per_page=100" --paginate --jq ".check_runs[] | select(.name != \"$SELF\" and .name != \"would-auto-merge\" and .name != \"romeo\") | \"\(.status) \(.conclusion // \"-\") \(.name)\"")
               st=$(gh api "repos/$REPO/commits/$head/status" --jq '.statuses | map(.state) | join(",")')
               if [ -z "$runs" ]; then why="no CI on the head yet"
               elif grep -qvE '^completed (success|neutral|skipped) ' <<< "$runs"; then why="CI not green: $(grep -vE '^completed (success|neutral|skipped) ' <<< "$runs" | head -3 | tr '\n' ';')"
